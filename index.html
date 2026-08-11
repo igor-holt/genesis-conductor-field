@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Genesis Conductor Field — Seed Evolution</title>
+  <meta name="description" content="Interactive three-phase field widget evolved from the hand-drawn spiral seed. SPIRAL · RADIATE · CONDUCTOR. Thermodynamic color mapping. Cursor-coupled. PQC-ready export." />
+  <style>
+    :root {
+      --bg: #07090f;
+      --panel: #0e121b;
+      --text: #e8eef7;
+      --muted: #8b9bb4;
+      --accent: #5eead4;
+      --accent2: #a78bfa;
+      --danger: #f472b6;
+      --grid: rgba(94, 234, 212, 0.06);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+      overflow: hidden;
+    }
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100%;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: linear-gradient(180deg, #0c1018 0%, transparent 100%);
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      z-index: 10;
+    }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .brand h1 {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .brand span {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    button.phase {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--muted);
+      padding: 8px 16px;
+      font-family: inherit;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.18s ease;
+      border-radius: 4px;
+    }
+    button.phase:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    button.phase.active {
+      background: rgba(94, 234, 212, 0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 20px rgba(94, 234, 212, 0.15);
+    }
+    button.export {
+      background: linear-gradient(135deg, #1e293b, #0f172a);
+      border: 1px solid rgba(167, 139, 250, 0.4);
+      color: var(--accent2);
+      padding: 8px 14px;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-left: 12px;
+    }
+    button.export:hover {
+      border-color: var(--accent2);
+      box-shadow: 0 0 16px rgba(167, 139, 250, 0.25);
+    }
+    #canvas-wrap {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 20px;
+      font-size: 11px;
+      color: var(--muted);
+      border-top: 1px solid rgba(255,255,255,0.04);
+      background: rgba(7,9,15,0.85);
+      backdrop-filter: blur(8px);
+    }
+    .status {
+      display: flex;
+      gap: 18px;
+    }
+    .status span strong {
+      color: var(--accent);
+      font-weight: 500;
+    }
+    #export-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    #export-modal.open { display: flex; }
+    .modal-card {
+      background: var(--panel);
+      border: 1px solid rgba(167,139,250,0.3);
+      border-radius: 10px;
+      padding: 24px;
+      max-width: 520px;
+      width: 90%;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    }
+    .modal-card h2 {
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      margin-bottom: 12px;
+    }
+    .modal-card pre {
+      background: #05070c;
+      padding: 14px;
+      border-radius: 6px;
+      font-size: 11px;
+      line-height: 1.5;
+      overflow-x: auto;
+      color: #c4d0e0;
+      max-height: 240px;
+      margin-bottom: 16px;
+    }
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .modal-actions button {
+      padding: 8px 14px;
+      font-family: inherit;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: transparent;
+      color: var(--text);
+    }
+    .modal-actions button.primary {
+      background: rgba(167,139,250,0.15);
+      border-color: var(--accent2);
+      color: var(--accent2);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="brand">
+        <h1>Genesis Conductor Field</h1>
+        <span>Seed Evolution · det(T_xy) locked · Landauer-aware</span>
+      </div>
+      <div class="controls">
+        <button class="phase active" data-phase="SPIRAL">Spiral</button>
+        <button class="phase" data-phase="RADIATE">Radiate</button>
+        <button class="phase" data-phase="CONDUCTOR">Conductor</button>
+        <button class="export" id="btn-export">Export Attestation</button>
+      </div>
+    </header>
+
+    <div id="canvas-wrap">
+      <canvas id="field"></canvas>
+    </div>
+
+    <footer>
+      <div class="status">
+        <span>Phase <strong id="phase-label">SPIRAL</strong></span>
+        <span>Entropy proxy <strong id="entropy">0.000</strong></span>
+        <span>Cursor field strength <strong id="field-str">0.00</strong></span>
+      </div>
+      <div>Invariant seed · thermodynamic color · PQC-ready hash export</div>
+    </footer>
+  </div>
+
+  <div id="export-modal">
+    <div class="modal-card">
+      <h2>Field State Attestation</h2>
+      <pre id="export-json"></pre>
+      <div class="modal-actions">
+        <button id="btn-copy">Copy</button>
+        <button class="primary" id="btn-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ─────────────────────────────────────────────────────────────
+    // Genesis Conductor Field Widget
+    // Three-phase evolution of the hand-drawn spiral seed
+    // SPIRAL · RADIATE · CONDUCTOR
+    // Thermodynamic color mapping + cursor coupling + attestation export
+    // ─────────────────────────────────────────────────────────────
+
+    const canvas = document.getElementById('field');
+    const ctx = canvas.getContext('2d');
+    let W, H, dpr;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = canvas.clientWidth;
+      H = canvas.clientHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // State
+    let phase = 'SPIRAL';
+    let t = 0;
+    let mouse = { x: W * 0.5, y: H * 0.5, active: false };
+    let entropyProxy = 0;
+    let fieldStrength = 0;
+
+    // Particles / field elements
+    const N = 180;
+    const particles = [];
+    for (let i = 0; i < N; i++) {
+      particles.push({
+        a: Math.random() * Math.PI * 2,
+        r: 20 + Math.random() * 280,
+        speed: 0.2 + Math.random() * 0.8,
+        phaseOffset: Math.random() * Math.PI * 2,
+        energy: Math.random(),
+        trail: []
+      });
+    }
+
+    // Phase buttons
+    document.querySelectorAll('button.phase').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('button.phase').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        phase = btn.dataset.phase;
+        document.getElementById('phase-label').textContent = phase;
+      });
+    });
+
+    // Mouse
+    canvas.addEventListener('pointermove', e => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+      mouse.active = true;
+    });
+    canvas.addEventListener('pointerleave', () => { mouse.active = false; });
+
+    // Thermodynamic color map
+    // Low energy → deep cyan / indigo (sink)
+    // Mid → violet
+    // High → magenta / warm (radiate)
+    function thermoColor(e, alpha = 1) {
+      // e in [0,1]
+      const h = 200 - e * 140;          // 200° → 60°
+      const s = 70 + e * 25;
+      const l = 45 + e * 25;
+      return `hsla(${h}, ${s}%, ${l}%, ${alpha})`;
+    }
+
+    function drawDotGrid() {
+      ctx.save();
+      ctx.fillStyle = 'rgba(94, 234, 212, 0.035)';
+      const step = 28;
+      for (let x = 0; x < W; x += step) {
+        for (let y = 0; y < H; y += step) {
+          ctx.beginPath();
+          ctx.arc(x, y, 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+
+    function drawSpiral() {
+      const cx = W * 0.5;
+      const cy = H * 0.58;
+      ctx.save();
+      // Core vortex
+      for (let i = 0; i < 8; i++) {
+        const r = 12 + i * 18 + Math.sin(t * 0.8 + i) * 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = thermoColor(0.15 + i * 0.05, 0.25 - i * 0.02);
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+
+      // Arms
+      for (let arm = 0; arm < 5; arm++) {
+        ctx.beginPath();
+        for (let s = 0; s < 140; s++) {
+          const ang = (s * 0.11) + arm * (Math.PI * 2 / 5) + t * 0.35;
+          const rad = 8 + s * 2.1;
+          const x = cx + Math.cos(ang) * rad;
+          const y = cy + Math.sin(ang) * rad * 0.92;
+          if (s === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = thermoColor(0.2 + arm * 0.08, 0.55);
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+      }
+
+      // Flowing striated bands (from original seed)
+      for (let b = 0; b < 6; b++) {
+        ctx.beginPath();
+        const baseY = H * 0.22 + b * 18;
+        for (let x = 0; x < W; x += 4) {
+          const wave = Math.sin(x * 0.012 + t * 0.9 + b * 0.7) * (18 + b * 3);
+          const y = baseY + wave + Math.sin(t * 0.4 + b) * 6;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = thermoColor(0.35 + b * 0.05, 0.35);
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+      }
+
+      // Subtle sunburst remnant at top
+      const topY = H * 0.12;
+      for (let i = 0; i < 24; i++) {
+        const ang = (i / 24) * Math.PI - Math.PI / 2 + Math.sin(t * 0.3) * 0.05;
+        const len = 40 + Math.sin(t + i) * 12;
+        ctx.beginPath();
+        ctx.moveTo(cx, topY);
+        ctx.lineTo(cx + Math.cos(ang) * len, topY + Math.sin(ang) * len * 0.6);
+        ctx.strokeStyle = thermoColor(0.55, 0.18);
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawRadiate() {
+      const cx = W * 0.5;
+      const cy = H * 0.42;
+      ctx.save();
+
+      // Expanding rings
+      for (let i = 0; i < 9; i++) {
+        const r = 30 + i * 42 + (t * 18) % 42;
+        const alpha = 0.35 - (r / (H * 0.7)) * 0.3;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.strokeStyle = thermoColor(0.4 + i * 0.05, Math.max(0.05, alpha));
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // Radial rays
+      const rayCount = 48;
+      for (let i = 0; i < rayCount; i++) {
+        const ang = (i / rayCount) * Math.PI * 2 + t * 0.08;
+        const len = 90 + Math.sin(t * 1.2 + i * 0.4) * 70;
+        const e = 0.5 + 0.4 * Math.sin(i * 0.3 + t);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(ang) * len, cy + Math.sin(ang) * len);
+        ctx.strokeStyle = thermoColor(e, 0.45);
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+      }
+
+      // Central core
+      const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, 60);
+      grd.addColorStop(0, thermoColor(0.85, 0.7));
+      grd.addColorStop(1, thermoColor(0.3, 0));
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawConductor() {
+      const cx = W * 0.5;
+      const cy = H * 0.5;
+      ctx.save();
+
+      // Base field lines that get disturbed by cursor
+      let totalEnergy = 0;
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        // Base spiral motion
+        p.a += 0.008 * p.speed;
+        let x = cx + Math.cos(p.a) * p.r;
+        let y = cy + Math.sin(p.a) * p.r * 0.88;
+
+        // Cursor disturbance (conductor coupling)
+        if (mouse.active) {
+          const dx = mouse.x - x;
+          const dy = mouse.y - y;
+          const dist = Math.sqrt(dx * dx + dy * dy) + 1;
+          const force = Math.min(180 / dist, 4.5);
+          x -= (dx / dist) * force * 1.8;
+          y -= (dy / dist) * force * 1.8;
+          p.energy = Math.min(1, p.energy + force * 0.015);
+          fieldStrength = Math.min(1, fieldStrength * 0.92 + force * 0.04);
+        } else {
+          p.energy *= 0.992;
+          fieldStrength *= 0.97;
+        }
+
+        // Trail
+        p.trail.push({ x, y, e: p.energy });
+        if (p.trail.length > 14) p.trail.shift();
+
+        // Draw trail
+        for (let k = 1; k < p.trail.length; k++) {
+          const a = p.trail[k - 1];
+          const b = p.trail[k];
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = thermoColor(b.e, 0.15 + k * 0.04);
+          ctx.lineWidth = 1.1;
+          ctx.stroke();
+        }
+
+        // Head
+        ctx.beginPath();
+        ctx.arc(x, y, 1.6 + p.energy * 2.2, 0, Math.PI * 2);
+        ctx.fillStyle = thermoColor(p.energy, 0.9);
+        ctx.fill();
+
+        totalEnergy += p.energy;
+      }
+
+      entropyProxy = totalEnergy / particles.length;
+
+      // Soft influence halo around cursor
+      if (mouse.active) {
+        const grd = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 120);
+        grd.addColorStop(0, 'rgba(167, 139, 250, 0.12)');
+        grd.addColorStop(1, 'rgba(167, 139, 250, 0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, 120, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    function frame(now) {
+      t = now * 0.001;
+      ctx.clearRect(0, 0, W, H);
+
+      // subtle vignette background
+      const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
+      bg.addColorStop(0, '#0a0e16');
+      bg.addColorStop(1, '#05070c');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      drawDotGrid();
+
+      if (phase === 'SPIRAL') {
+        drawSpiral();
+        entropyProxy = 0.18 + 0.04 * Math.sin(t * 0.7);
+        fieldStrength *= 0.95;
+      } else if (phase === 'RADIATE') {
+        drawRadiate();
+        entropyProxy = 0.55 + 0.12 * Math.sin(t * 1.1);
+        fieldStrength *= 0.95;
+      } else {
+        drawConductor();
+      }
+
+      document.getElementById('entropy').textContent = entropyProxy.toFixed(3);
+      document.getElementById('field-str').textContent = fieldStrength.toFixed(2);
+
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    // ─── Export / Attestation ────────────────────────────────────
+    async function sha256(str) {
+      const buf = new TextEncoder().encode(str);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    document.getElementById('btn-export').addEventListener('click', async () => {
+      const state = {
+        schema: 'genesis.conductor.field.v1',
+        phase,
+        timestamp: new Date().toISOString(),
+        entropy_proxy: +entropyProxy.toFixed(5),
+        field_strength: +fieldStrength.toFixed(5),
+        seed: 'hand-drawn-spiral-dotgrid-invariantx',
+        invariants: {
+          det_T_xy: 1.0,
+          crystalline_score_target: 0.92,
+          thermodynamic_mapping: true,
+          cursor_coupled: phase === 'CONDUCTOR'
+        },
+        note: 'PQC-ready export. Hash is SHA-256 (Web Crypto). Falcon-512 / Dilithium attestation layer can be attached downstream.'
+      };
+      const payload = JSON.stringify(state, null, 2);
+      const hash = await sha256(payload);
+      state.attestation = {
+        algorithm: 'SHA-256',
+        hash,
+        ready_for: ['Falcon-512', 'Dilithium', 'KVDF']
+      };
+      const final = JSON.stringify(state, null, 2);
+      document.getElementById('export-json').textContent = final;
+      document.getElementById('export-modal').classList.add('open');
+    });
+
+    document.getElementById('btn-close').addEventListener('click', () => {
+      document.getElementById('export-modal').classList.remove('open');
+    });
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      const text = document.getElementById('export-json').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('btn-copy');
+        btn.textContent = 'Copied';
+        setTimeout(() => btn.textContent = 'Copy', 1400);
+      });
+    });
+  </script>
+</body>
+</html>
